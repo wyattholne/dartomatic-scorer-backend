@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Smart Dart Calibration</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+        }
+        .button:disabled {
+            background-color: #cccccc;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background-color: #f0f0f0;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        .progress-bar-fill {
+            height: 100%;
+            background-color: #4CAF50;
+            border-radius: 10px;
+            transition: width 0.5s ease-in-out;
+        }
+        .status {
+            margin: 20px 0;
+            padding: 10px;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Smart Dart Calibration</h1>
+    <button id="startBtn" class="button">Start Calibration</button>
+    <button id="stopBtn" class="button" style="display: none;">Stop Calibration</button>
+    
+    <div class="progress-bar">
+        <div id="progressFill" class="progress-bar-fill" style="width: 0%"></div>
+    </div>
+    
+    <div id="status" class="status">Ready to start calibration</div>
+    
+    <script>
+        const startBtn = document.getElementById('startBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const progressFill = document.getElementById('progressFill');
+        const status = document.getElementById('status');
+        
+        let statusInterval;
+        
+        startBtn.addEventListener('click', async () => {
+            try {
+                const response = await fetch('/api/start', { method: 'POST' });
+                const data = await response.json();
+                
+                if (data.status === 'started') {
+                    startBtn.style.display = 'none';
+                    stopBtn.style.display = 'inline';
+                    startStatusPolling();
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                status.textContent = 'Error starting calibration';
+            }
+        });
+        
+        stopBtn.addEventListener('click', async () => {
+            try {
+                await fetch('/api/stop', { method: 'POST' });
+                stopBtn.style.display = 'none';
+                startBtn.style.display = 'inline';
+                stopStatusPolling();
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        });
+        
+        function startStatusPolling() {
+            statusInterval = setInterval(async () => {
+                try {
+                    const response = await fetch('/api/status');
+                    const data = await response.json();
+                    
+                    progressFill.style.width = `${data.progress}%`;
+                    
+                    if (!data.is_calibrating) {
+                        stopBtn.style.display = 'none';
+                        startBtn.style.display = 'inline';
+                        stopStatusPolling();
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                }
+            }, 1000);
+        }
+        
+        function stopStatusPolling() {
+            if (statusInterval) {
+                clearInterval(statusInterval);
+            }
+        }
+    </script>
+</body>
+</html>
